@@ -49,10 +49,10 @@ USAGE = """Robot Framework -- A generic automation framework
 
 Version:  <VERSION>
 
-Usage:  robot [options] data_sources
-   or:  python -m robot [options] data_sources
-   or:  python path/to/robot [options] data_sources
-   or:  java -jar robotframework.jar [options] data_sources
+Usage:  robot [options] paths
+   or:  python -m robot [options] paths
+   or:  python path/to/robot [options] paths
+   or:  java -jar robotframework.jar [options] paths
 
 Robot Framework is a generic open source automation framework for acceptance
 testing, acceptance test-driven development (ATDD) and robotic process
@@ -63,7 +63,7 @@ keywords can also be created using Robot Framework's own syntax.
 
 The easiest way to execute Robot Framework is using the `robot` command created
 as part of the normal installation. Alternatively it is possible to execute
-the `robot` module directly using `python -m robot`, where `python` can be
+the `robot` module directly like `python -m robot`, where `python` can be
 replaced with any supported Python interpreter such as `jython`, `ipy` or
 `python3`. Yet another alternative is running the `robot` directory like
 `python path/to/robot`. Finally, there is a standalone JAR distribution
@@ -88,7 +88,7 @@ see http://robotframework.org/.
 Options
 =======
 
-    --rpa                 Turn the on generic automation mode. Mainly affects
+    --rpa                 Turn on the generic automation mode. Mainly affects
                           terminology so that "test" is replaced with "task"
                           in logs and reports. By default the mode is got
                           from test/task header in data files. New in RF 3.1.
@@ -97,18 +97,21 @@ Options
                           files or when using resource files. If more than one
                           extension is needed, separate them with a colon.
                           Examples: `--extension txt`, `--extension robot:txt`
-                          New in RF 3.0.1. Starting from RF 3.2 only `*.robot`
-                          files are parsed by default.
+                          Starting from RF 3.2 only `*.robot` files are parsed
+                          by default.
  -N --name name           Set the name of the top level suite. By default the
                           name is created based on the executed file or
                           directory.
  -D --doc documentation   Set the documentation of the top level suite.
                           Simple formatting is supported (e.g. *bold*). If the
                           documentation contains spaces, it must be quoted.
-                          Example: --doc "Very *good* example"
+                          If the value is path to an existing file, actual
+                          documentation is read from that file.
+                          Examples: --doc "Very *good* example"
+                                    --doc doc_from_file.txt
  -M --metadata name:value *  Set metadata of the top level suite. Value can
-                          contain formatting similarly as --doc.
-                          Example: --metadata Version:1.2
+                          contain formatting and be read from a file similarly
+                          as --doc. Example: --metadata Version:1.2
  -G --settag tag *        Sets given tag(s) to all executed tests.
  -t --test name *         Select tests by name or by long name containing also
                           parent suite name like `Parent.Test`. Name is case
@@ -138,7 +141,7 @@ Options
                           re-executed. Equivalent to selecting same tests
                           individually using --test.
  -S --rerunfailedsuites output  Select failed suites from an earlier output
-                          file to be re-executed. New in RF 3.0.1.
+                          file to be re-executed.
     --runemptysuite       Executes suite even if it contains no tests. Useful
                           e.g. with --include/--exclude when it is not an error
                           that no test matches the condition.
@@ -294,7 +297,6 @@ Options
     --dryrun              Verifies test data and runs tests so that library
                           keywords are not executed.
  -X --exitonfailure       Stops test execution if any critical test fails.
-                          Short option -X is new in RF 3.0.1.
     --exitonerror         Stops test execution if any error occurs when parsing
                           test data, importing libraries, and so on.
     --skipteardownonexit  Causes teardowns to be skipped if test execution is
@@ -470,7 +472,7 @@ def run_cli(arguments=None, exit=True):
     :param arguments: Command line options and arguments as a list of strings.
         Starting from RF 3.1, defaults to ``sys.argv[1:]`` if not given.
     :param exit: If ``True``, call ``sys.exit`` with the return code denoting
-        execution status, otherwise just return the rc. New in RF 3.0.1.
+        execution status, otherwise just return the rc.
 
     Entry point used when running tests from the command line, but can also
     be used by custom scripts that execute tests. Especially useful if the

@@ -3,15 +3,15 @@ import os
 import unittest
 import tempfile
 
-from robot.parsing import get_model, ModelVisitor, ModelTransformer, Token
+from robot.parsing import get_model, get_resource_model, ModelVisitor, ModelTransformer, Token
 from robot.parsing.model.blocks import (
-    Block, File, CommentSection, TestCaseSection, KeywordSection,
-    TestCase, Keyword, For, If, VariableSection
+    Block, CommentSection, File, For, If, Keyword, KeywordSection,
+    SettingSection, TestCase, TestCaseSection, VariableSection
 )
 from robot.parsing.model.statements import (
-    Statement, TestCaseSectionHeader, KeywordSectionHeader, ForHeader, End,
-    TestCaseName, KeywordName, KeywordCall, Arguments, EmptyLine, Comment,
-    IfHeader, ElseIfHeader, ElseHeader, VariableSectionHeader, Variable
+    Arguments, Comment, Documentation, ForHeader, End, ElseHeader, ElseIfHeader,
+    EmptyLine, Error, IfHeader, KeywordCall, KeywordName, SectionHeader,
+    Statement, TestCaseName, Variable
 )
 from robot.utils import PY3
 from robot.utils.asserts import assert_equal, assert_raises_with_msg
@@ -47,7 +47,7 @@ EXPECTED = File(sections=[
         ]
     ),
     TestCaseSection(
-        header=TestCaseSectionHeader([
+        header=SectionHeader([
             Token('TESTCASE HEADER', '*** Test Cases ***', 2, 0),
             Token('EOL', '\n', 2, 18)
         ]),
@@ -83,7 +83,7 @@ EXPECTED = File(sections=[
         ]
     ),
     KeywordSection(
-        header=KeywordSectionHeader([
+        header=SectionHeader([
             Token('KEYWORD HEADER', '*** Keywords ***', 10, 0),
             Token('EOL', '\n', 10, 16)
         ]),
@@ -126,7 +126,7 @@ EXPECTED = File(sections=[
 def assert_model(model, expected=EXPECTED, **expected_attrs):
     if type(model) is not type(expected):
         raise AssertionError('Incompatible types:\n%s\n%s'
-                             % (ast.dump(model), ast.dump(expected)))
+                             % (dump_model(model), dump_model(expected)))
     if isinstance(model, list):
         assert_equal(len(model), len(expected),
                      '%r != %r' % (model, expected), values=False)
@@ -142,6 +142,14 @@ def assert_model(model, expected=EXPECTED, **expected_attrs):
         raise AssertionError('Incompatible children:\n%r\n%r'
                              % (model, expected))
 
+
+def dump_model(model):
+    if isinstance(model, ast.AST):
+        return ast.dump(model)
+    elif isinstance(model, (list, tuple)):
+        return [dump_model(m) for m in model]
+    else:
+        raise TypeError('Invalid model %r' % model)
 
 def assert_block(model, expected, expected_attrs):
     assert_equal(model._fields, expected._fields)
@@ -536,7 +544,7 @@ ${x}      value
 &{z} =    one=item
 ''', data_only=True)
         expected = VariableSection(
-            header=VariableSectionHeader(
+            header=SectionHeader(
                 tokens=[Token(Token.VARIABLE_HEADER, '*** Variables ***', 1, 0)]
             ),
             body=[
@@ -562,7 +570,7 @@ ${not     closed
 &{dict}   invalid    ${invalid}
 ''', data_only=True)
         expected = VariableSection(
-            header=VariableSectionHeader(
+            header=SectionHeader(
                 tokens=[Token(Token.VARIABLE_HEADER, '*** Variables ***', 1, 0)]
             ),
             body=[
@@ -604,9 +612,169 @@ ${not     closed
         )
         assert_model(model.sections[0], expected)
 
+
+class TestKeyword(unittest.TestCase):
+
+    def test_invalid_arg_spec(self):
+        model = get_model('''\
+*** Keywords ***
+Invalid
+    [Arguments]    ooops    ${optional}=default    ${required}
+    ...    @{too}    @{many}    &{notlast}    ${x}
+''', data_only=True)
+        expected = KeywordSection(
+            header=SectionHeader(
+                tokens=[Token(Token.KEYWORD_HEADER, '*** Keywords ***', 1, 0)]
+            ),
+            body=[
+                Keyword(
+                    header=KeywordName(
+                        tokens=[Token(Token.KEYWORD_NAME, 'Invalid', 2, 0)]
+                    ),
+                    body=[
+                        Arguments(
+                            tokens=[Token(Token.ARGUMENTS, '[Arguments]', 3, 4),
+                                    Token(Token.ARGUMENT, 'ooops', 3, 19),
+                                    Token(Token.ARGUMENT, '${optional}=default', 3, 28),
+                                    Token(Token.ARGUMENT, '${required}', 3, 51),
+                                    Token(Token.ARGUMENT, '@{too}', 4, 11),
+                                    Token(Token.ARGUMENT, '@{many}', 4, 21),
+                                    Token(Token.ARGUMENT, '&{notlast}', 4, 32),
+                                    Token(Token.ARGUMENT, '${x}', 4, 46)],
+                            errors=("Invalid argument syntax 'ooops'.",
+                                    'Non-default argument after default arguments.',
+                                    'Cannot have multiple varargs.',
+                                    'Only last argument can be kwargs.')
+                        )
+                    ],
+                )
+            ]
+        )
+        assert_model(model.sections[0], expected)
+
+class TestError(unittest.TestCase):
+
+    def test_get_errors_from_tokens(self):
+        assert_equal(Error([Token('ERROR', error='xxx')]).errors,
+                     ('xxx',))
+        assert_equal(Error([Token('ERROR', error='xxx'),
+                            Token('ARGUMENT'),
+                            Token('ERROR', error='yyy')]).errors,
+                     ('xxx', 'yyy'))
+        assert_equal(Error([Token('ERROR', error=e) for e in '0123456789']).errors,
+                     tuple('0123456789'))
+
+    def test_get_fatal_errors_from_tokens(self):
+        assert_equal(Error([Token('FATAL ERROR', error='xxx')]).errors,
+                     ('xxx',))
+        assert_equal(Error([Token('FATAL ERROR', error='xxx'),
+                            Token('ARGUMENT'),
+                            Token('FATAL ERROR', error='yyy')]).errors,
+                     ('xxx', 'yyy'))
+        assert_equal(Error([Token('FATAL ERROR', error=e) for e in '0123456789']).errors,
+                     tuple('0123456789'))
+
+    def test_get_errors_and_fatal_errors_from_tokens(self):
+        assert_equal(Error([Token('ERROR', error='error'),
+                            Token('ARGUMENT'),
+                            Token('FATAL ERROR', error='fatal error')]).errors,
+                     ('error', 'fatal error'))
+        assert_equal(Error([Token('FATAL ERROR', error=e) for e in '0123456789']).errors,
+                     tuple('0123456789'))
+
+    def test_model_error(self):
+        model = get_model('''\
+*** Invalid ***
+*** Settings ***
+Invalid
+Documentation
+''', data_only=True)
+        inv_header = (
+            "Unrecognized section header '*** Invalid ***'. Valid sections: "
+            "'Settings', 'Variables', 'Test Cases', 'Tasks', 'Keywords' and 'Comments'."
+        )
+        inv_setting = "Non-existing setting 'Invalid'."
+        expected = File([
+            CommentSection(
+                body=[
+                    Error([Token('ERROR', '*** Invalid ***', 1, 0, inv_header)])
+                ]
+            ),
+            SettingSection(
+                header=SectionHeader([
+                    Token('SETTING HEADER', '*** Settings ***', 2, 0)
+                ]),
+                body=[
+                    Error([Token('ERROR', 'Invalid', 3, 0, inv_setting)]),
+                    Documentation([Token('DOCUMENTATION', 'Documentation', 4, 0)])
+                ]
+            )
+        ])
+        assert_model(model, expected)
+
+    def test_model_error_with_fatal_error(self):
+        model = get_resource_model('''\
+*** Test Cases ***
+''', data_only=True)
+        inv_testcases = "Resource file with 'Test Cases' section is invalid."
+        expected = File([
+            CommentSection(
+                body=[
+                    Error([Token('FATAL ERROR', '*** Test Cases ***', 1, 0, inv_testcases)])
+                ]
+            )
+        ])
+        assert_model(model, expected)
+
+    def test_model_error_with_error_and_fatal_error(self):
+        model = get_resource_model('''\
+*** Invalid ***
+*** Settings ***
+Invalid
+Documentation
+*** Test Cases ***
+''', data_only=True)
+        inv_header = (
+            "Unrecognized section header '*** Invalid ***'. Valid sections: "
+            "'Settings', 'Variables', 'Keywords' and 'Comments'."
+        )
+        inv_setting = "Non-existing setting 'Invalid'."
+        inv_testcases = "Resource file with 'Test Cases' section is invalid."
+        expected = File([
+            CommentSection(
+                body=[
+                    Error([Token('ERROR', '*** Invalid ***', 1, 0, inv_header)])
+                ]
+            ),
+            SettingSection(
+                header=SectionHeader([
+                    Token('SETTING HEADER', '*** Settings ***', 2, 0)
+                ]),
+                body=[
+                    Error([Token('ERROR', 'Invalid', 3, 0, inv_setting)]),
+                    Documentation([Token('DOCUMENTATION', 'Documentation', 4, 0)]),
+                    Error([Token('FATAL ERROR', '*** Test Cases ***', 5, 0, inv_testcases)])
+                ]
+            )
+        ])
+        assert_model(model, expected)
+
+    def test_set_errors_explicitly(self):
+        error = Error([])
+        error.errors = ('explicitly set', 'errors')
+        assert_equal(error.errors, ('explicitly set', 'errors'))
+        error.tokens = [Token('ERROR', error='normal error'),
+                        Token('FATAL ERROR', error='fatal error')]
+        assert_equal(error.errors, ('normal error', 'fatal error',
+                                    'explicitly set', 'errors'))
+        error.errors = ['errors', 'as', 'list']
+        assert_equal(error.errors, ('normal error', 'fatal error',
+                                    'errors', 'as', 'list'))
+
+
 class TestModelVisitors(unittest.TestCase):
 
-    def test_ast_NodevVisitor(self):
+    def test_ast_NodeVisitor(self):
 
         class Visitor(ast.NodeVisitor):
 
@@ -707,7 +875,7 @@ Remove
         Transformer().visit(model)
         expected = File(sections=[
             TestCaseSection(
-                header=TestCaseSectionHeader([
+                header=SectionHeader([
                     Token('TESTCASE HEADER', '*** Test Cases ***', 1, 0),
                     Token('EOL', '\n', 1, 18)
                 ]),
@@ -729,7 +897,7 @@ Remove
 
         class Transformer(ModelTransformer):
 
-            def visit_TestCaseSectionHeader(self, node):
+            def visit_SectionHeader(self, node):
                 return node
 
             def visit_TestCaseName(self, node):
@@ -754,7 +922,7 @@ Example
         Transformer().visit(model)
         expected = File(sections=[
             TestCaseSection(
-                header=TestCaseSectionHeader([
+                header=SectionHeader([
                     Token('TESTCASE HEADER', '*** TEST CASES ***', 1, 0),
                     Token('EOL', '\n', 1, 18)
                 ]),

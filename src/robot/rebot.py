@@ -92,10 +92,13 @@ Options
  -D --doc documentation   Set the documentation of the top level suite.
                           Simple formatting is supported (e.g. *bold*). If
                           the documentation contains spaces, it must be quoted.
-                          Example: --doc "Very *good* example"
+                          If the value is path to an existing file, actual
+                          documentation is read from that file.
+                          Examples: --doc "Very *good* example"
+                                    --doc doc_from_file.txt
  -M --metadata name:value *  Set metadata of the top level suite. Value can
-                          contain formatting similarly as --doc.
-                          Example: --metadata Version:1.2
+                          contain formatting and be read from a file similarly
+                          as --doc. Example: --metadata Version:1.2
  -G --settag tag *        Sets given tag(s) to all tests.
  -t --test name *         Select tests by name or by long name containing also
                           parent suite name like `Parent.Test`. Name is case
@@ -355,7 +358,7 @@ def rebot_cli(arguments=None, exit=True):
     :param arguments: Command line options and arguments as a list of strings.
         Starting from RF 3.1, defaults to ``sys.argv[1:]`` if not given.
     :param exit: If ``True``, call ``sys.exit`` with the return code denoting
-        execution status, otherwise just return the rc. New in RF 3.0.1.
+        execution status, otherwise just return the rc.
 
     Entry point used when post-processing outputs from the command line, but
     can also be used by custom scripts. Especially useful if the script itself

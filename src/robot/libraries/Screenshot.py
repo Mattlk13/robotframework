@@ -31,7 +31,6 @@ elif sys.platform == 'cli':
 else:
     try:
         import wx
-        wx_app = wx.App(False)  # Linux Python 2.7 must exist on global scope
     except ImportError:
         wx = None
     try:
@@ -46,7 +45,7 @@ else:
 from robot.api import logger
 from robot.libraries.BuiltIn import BuiltIn
 from robot.version import get_version
-from robot.utils import abspath, get_error_message, get_link_path, py2to3
+from robot.utils import abspath, get_error_message, get_link_path, py3to2
 
 
 class Screenshot(object):
@@ -76,10 +75,6 @@ class Screenshot(object):
       Only works on Windows. Also the original PIL package is supported.
     - Scrot :: http://en.wikipedia.org/wiki/Scrot :: Not used on Windows.
       Install with ``apt-get install scrot`` or similar.
-
-    Using ``screencapture`` on OSX and specifying explicit screenshot module
-    are new in Robot Framework 2.9.2. The support for using ``scrot`` is new
-    in Robot Framework 3.0.
 
     = Using with Jython and IronPython =
 
@@ -127,8 +122,6 @@ class Screenshot(object):
         | Library   | Screenshot |            |
         | Library   | Screenshot | ${TEMPDIR} |
         | Library   | Screenshot | screenshot_module=PyGTK |
-
-        Specifying explicit screenshot module is new in Robot Framework 2.9.2.
         """
         self._given_screenshot_dir = self._norm_path(screenshot_directory)
         self._screenshot_taker = ScreenshotTaker(screenshot_module)
@@ -250,17 +243,18 @@ class Screenshot(object):
                     % (link, path), html=True)
 
 
-@py2to3
+@py3to2
 class ScreenshotTaker(object):
 
     def __init__(self, module_name=None):
         self._screenshot = self._get_screenshot_taker(module_name)
         self.module = self._screenshot.__name__.split('_')[1]
+        self._wx_app_reference = None
 
     def __call__(self, path):
         self._screenshot(path)
 
-    def __nonzero__(self):
+    def __bool__(self):
         return self.module != 'no'
 
     def test(self, path=None):
@@ -355,7 +349,8 @@ class ScreenshotTaker(object):
             raise RuntimeError("Using 'scrot' failed.")
 
     def _wx_screenshot(self, path):
-        # depends on wx_app been created
+        if not self._wx_app_reference:
+            self._wx_app_reference = wx.App(False)
         context = wx.ScreenDC()
         width, height = context.GetSize()
         if wx.__version__ >= '4':
@@ -390,7 +385,7 @@ class ScreenshotTaker(object):
 
 if __name__ == "__main__":
     if len(sys.argv) not in [2, 3]:
-        sys.exit("Usage: %s <path>|test [wx|pygtk|pil|scrot]"
+        sys.exit("Usage: %s <path>|test [wxpython|pygtk|pil|scrot]"
                  % os.path.basename(sys.argv[0]))
     path = sys.argv[1] if sys.argv[1] != 'test' else None
     module = sys.argv[2] if len(sys.argv) > 2 else None

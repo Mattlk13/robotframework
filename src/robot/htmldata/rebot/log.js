@@ -9,7 +9,7 @@ function toggleTest(testId) {
 }
 
 function toggleKeyword(kwId) {
-    toggleElement(kwId, ['keyword', 'message']);
+    toggleElement(kwId, ['keyword']);
 }
 
 function toggleElement(elementId, childrenNames) {
@@ -34,19 +34,18 @@ function drawCallback(element, childElement, childrenNames) {
     return function () {
         util.map(childrenNames, function (childName) {
             var children = element[childName + 's']();
-            var template = childName + 'Template';
             util.map(children, function (child) {
-                $.tmpl(template, child).appendTo(childElement);
+                $.tmpl(child.template, child).appendTo(childElement);
             });
         });
     }
 }
 
 function expandSuite(suite) {
-    if (suite.status == "PASS")
-        expandElement(suite);
-    else
+    if (suite.status == "FAIL")
         expandFailed(suite);
+    else
+        expandElement(suite);
 }
 
 function expandElement(item, retryCount) {
@@ -107,8 +106,9 @@ function expandRecursively() {
     element.callWhenChildrenReady(function () {
         var children = element.children();
         for (var i = children.length-1; i >= 0; i--) {
-            if (window.expandDecider(children[i]))
-                window.elementsToExpand.push(children[i]);
+            var child = children[i];
+            if (child.type != 'message' && window.expandDecider(child))
+                window.elementsToExpand.push(child);
         }
         if (window.elementsToExpand.length)
             setTimeout(expandRecursively, 0);

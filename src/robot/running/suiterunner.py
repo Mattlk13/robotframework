@@ -16,20 +16,18 @@
 from robot.errors import ExecutionStatus, DataError, PassExecution
 from robot.model import SuiteVisitor, TagPatterns
 from robot.result import TestSuite, Result
-from robot.utils import (get_timestamp, is_list_like, NormalizedDict, unic,
-                         test_or_task)
+from robot.utils import get_timestamp, is_list_like, NormalizedDict, unic, test_or_task
 from robot.variables import VariableScopes
 
+from .bodyrunner import BodyRunner, KeywordRunner
 from .context import EXECUTION_CONTEXTS
-from .steprunner import StepRunner
+from .modelcombiner import ModelCombiner
 from .namespace import Namespace
 from .status import SuiteStatus, TestStatus
 from .timeouts import TestTimeout
 
 
-# Some 'extract method' love needed here. Perhaps even 'extract class'.
-
-class Runner(SuiteVisitor):
+class SuiteRunner(SuiteVisitor):
 
     def __init__(self, output, settings):
         self.result = None
@@ -101,7 +99,6 @@ class Runner(SuiteVisitor):
                     self._suite.suite_teardown_skipped(unic(failure))
                 else:
                     self._suite.suite_teardown_failed(unic(failure))
-                self._suite_status.failure_occurred()
         self._suite.endtime = get_timestamp()
         self._suite.message = self._suite_status.message
         self._context.end_suite(ModelCombiner(suite, self._suite))
@@ -137,15 +134,14 @@ class Runner(SuiteVisitor):
             status.test_failed(
                 test_or_task('{Test} case name cannot be empty.',
                              self._settings.rpa))
-        if not status.failed and not test.keywords.normal:
+        if not status.failed and not test.body:
             status.test_failed(
                 test_or_task('{Test} case contains no keywords.',
                              self._settings.rpa))
         self._run_setup(test.setup, status, result)
         try:
             if not status.failed:
-                StepRunner(self._context,
-                           test.template).run_steps(test.keywords.normal)
+                BodyRunner(self._context, templated=bool(test.template)).run(test.body)
             else:
                 if status.skipped:
                     status.test_skipped(status.message)
@@ -161,18 +157,19 @@ class Runner(SuiteVisitor):
             status.test_failed(err)
         result.status = status.status
         result.message = status.message or result.message
-        if status.teardown_allowed:
-            with self._context.test_teardown(result):
-                failure = self._run_teardown(test.teardown, status,
-                                             result)
-                if failure:
-                    status.failure_occurred()
+        with self._context.test_teardown(result):
+            self._run_teardown(test.teardown, status, result)
         if not status.failed and result.timeout and result.timeout.timed_out():
             status.test_failed(result.timeout.get_message())
             result.message = status.message
+        if status.skip_if_needed():
+            result.message = status.message or result.message
         result.status = status.status
         result.endtime = get_timestamp()
+        failed_before_listeners = result.failed
         self._output.end_test(ModelCombiner(test, result))
+        if result.failed and not failed_before_listeners:
+            status.failure_occurred()
         self._context.end_test(result)
 
     def _add_exit_combine(self):
@@ -221,23 +218,6 @@ class Runner(SuiteVisitor):
         if name.upper() in ('', 'NONE'):
             return None
         try:
-            StepRunner(self._context).run_step(data, name=name)
+            KeywordRunner(self._context).run(data, name=name)
         except ExecutionStatus as err:
             return err
-
-
-class ModelCombiner(object):
-
-    def __init__(self, data, result, **priority):
-        self.data = data
-        self.result = result
-        self.priority = priority
-
-    def __getattr__(self, name):
-        if name in self.priority:
-            return self.priority[name]
-        if hasattr(self.result, name):
-            return getattr(self.result, name)
-        if hasattr(self.data, name):
-            return getattr(self.data, name)
-        raise AttributeError(name)

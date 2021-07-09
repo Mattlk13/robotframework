@@ -122,7 +122,7 @@ Providing arguments to libraries
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 All test libraries implemented as classes can take arguments. These
-arguments are specified in the Setting table after the library name,
+arguments are specified in the Setting section after the library name,
 and when Robot Framework creates an instance of the imported library,
 it passes them to its constructor. Libraries implemented as a module
 cannot take any arguments, so trying to use those results in an error.
@@ -749,7 +749,7 @@ example, it is typically easiest to use the `@keyword decorator`_:
 Using this decorator without an argument will have no effect on the exposed
 keyword name, but will still set the `robot_name` attribute.  This allows
 `marking methods to expose as keywords`_ without actually changing keyword
-names. Starting from Robot Framework 3.0.2, methods that have the `robot_name`
+names. Methods that have the `robot_name`
 attribute also create keywords even if the method name itself would start with
 an underscore.
 
@@ -901,6 +901,8 @@ the earlier Python example:
        multipleDefaults(arg1, "default 1");
    }
 
+.. _varargs-library:
+
 Variable number of arguments (`*varargs`)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -996,6 +998,8 @@ limitation: it works only when methods have one signature. Thus it is not
 possible to have Java keywords with both default values and varargs.
 
 __ http://docs.oracle.com/javase/1.5.0/docs/guide/language/varargs.html
+
+.. _kwargs-library:
 
 Free keyword arguments (`**kwargs`)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1190,6 +1194,8 @@ Using them as positional arguments works also with earlier versions,
 but using them as named arguments causes an error on Python side.
 
 __ https://www.python.org/dev/peps/pep-0570/
+
+.. _argument conversion:
 
 Argument types
 ~~~~~~~~~~~~~~
@@ -1427,17 +1433,28 @@ Other types cause conversion failures.
    |             |               |            |              | needed. All string comparisons are case-insensitive.           |                                      |
    +-------------+---------------+------------+--------------+----------------------------------------------------------------+--------------------------------------+
    | int_        | Integral_     | integer,   | string,      | Conversion is done using the int_ built-in function. Floats    | | `42`                               |
-   |             |               | long       | float        | are converted only if they can be represented as integers      |                                      |
-   |             |               |            |              | exactly. For example, `1.0` is accepted and `1.1` is not.      |                                      |
-   |             |               |            |              | If converting a string to an integer fails and the type        |                                      |
-   |             |               |            |              | is got implicitly based on a default value, conversion to      |                                      |
-   |             |               |            |              | float is attempted as well.                                    |                                      |
+   |             |               | long       | float        | are converted only if they can be represented as integers      | | `-1`                               |
+   |             |               |            |              | exactly. For example, `1.0` is accepted and `1.1` is not.      | | `0xFF`                             |
+   |             |               |            |              | If converting a string to an integer fails and the type        | | `0o777`                            |
+   |             |               |            |              | is got implicitly based on a default value, conversion to      | | `0b1010`                           |
+   |             |               |            |              | float is attempted as well.                                    | | `10 000 000`                       |
+   |             |               |            |              |                                                                | | `0xBAD_C0FFEE`                     |
+   |             |               |            |              | Starting from RF 4.1, it is possible to use hexadecimal,       |                                      |
+   |             |               |            |              | octal and binary numbers by prefixing values with              |                                      |
+   |             |               |            |              | `0x`, `0o` and `0b`, respectively.                             |                                      |
+   |             |               |            |              |                                                                |                                      |
+   |             |               |            |              | Starting from RF 4.1, numbers can be separated using space or  |                                      |
+   |             |               |            |              | underscore.                                                    |                                      |
    +-------------+---------------+------------+--------------+----------------------------------------------------------------+--------------------------------------+
    | float_      | Real_         | double     | string,      | Conversion is done using the float_ built-in.                  | | `3.14`                             |
    |             |               |            | int          |                                                                | | `2.9979e8`                         |
+   |             |               |            |              | Starting from RF 4.1, numbers can be separated using space or  | | `10 000.000 01`                    |
+   |             |               |            |              | underscore.                                                    | | `10_000.000_01`                    |
    +-------------+---------------+------------+--------------+----------------------------------------------------------------+--------------------------------------+
    | Decimal_    |               |            | string,      | Conversion is done using the Decimal_ class.                   | | `3.14`                             |
-   |             |               |            | int, float   |                                                                |                                      |
+   |             |               |            | int, float   |                                                                | | `10 000.000 01`                    |
+   |             |               |            |              | Starting from RF 4.1, numbers can be separated using space or  | | `10_000.000_01`                    |
+   |             |               |            |              | underscore.                                                    |                                      |
    +-------------+---------------+------------+--------------+----------------------------------------------------------------+--------------------------------------+
    | str_        |               | string,    | Any          | All arguments are converted to Unicode strings. With Python 2  |                                      |
    |             |               | unicode    |              | the type should be `unicode`, not `str`. New in RF 4.0.        |                                      |
@@ -1467,14 +1484,24 @@ Other types cause conversion failures.
    |             |               |            |              | `time as time string`_ or `time as "timer" string`_. Integers  | | `01:02` (same as above)            |
    |             |               |            |              | and floats are considered to be seconds.                       |                                      |
    +-------------+---------------+------------+--------------+----------------------------------------------------------------+--------------------------------------+
-   | Enum_       |               |            | string       | The specified type must be an enumeration (a subclass of       | .. sourcecode:: python               |
-   |             |               |            |              | Enum_) and given arguments must match its members.             |                                      |
-   |             |               |            |              |                                                                |    class Color(Enum):                |
-   |             |               |            |              | Starting from RF 3.2.2, matching members is case-, space-      |        GREEN = 1                     |
-   |             |               |            |              | and underscore-insensitive.                                    |        DARK_GREEN = 2                |
+   | Enum_       |               |            | string       | The specified type must be an enumeration (a subclass of Enum_ | .. sourcecode:: python               |
+   |             |               |            |              | or Flag_) and given arguments must match its member names.     |                                      |
+   |             |               |            |              |                                                                |    class Direction(Enum):            |
+   |             |               |            |              | Starting from RF 3.2.2, matching member names is case-, space- |        NORTH = auto()                |
+   |             |               |            |              | and underscore-insensitive.                                    |        NORTH_WEST = auto()           |
    |             |               |            |              |                                                                |                                      |
-   |             |               |            |              |                                                                | | `GREEN` (Color.GREEN)              |
-   |             |               |            |              |                                                                | | `Dark Green` (Color.DARK_GREEN)    |
+   |             |               |            |              |                                                                | | `NORTH` (Direction.NORTH)          |
+   |             |               |            |              |                                                                | | `north west` (Direction.NORTH_WEST)|
+   +-------------+---------------+------------+--------------+----------------------------------------------------------------+--------------------------------------+
+   | IntEnum_    |               |            | string, int  | The specified type must be an integer based enumeration (a     | .. sourcecode:: python               |
+   |             |               |            |              | subclass of IntEnum_ or IntFlag_) and given arguments must     |                                      |
+   |             |               |            |              | match its member names or values.                              |    class PowerState(IntEnum):        |
+   |             |               |            |              |                                                                |        OFF = 0                       |
+   |             |               |            |              | Matching member names is case-, space- and                     |        ON = 1                        |
+   |             |               |            |              | and underscore-insensitive. Values can be given as actual      |                                      |
+   |             |               |            |              | integers and as strings that can be converted to integers.     | | `OFF` (PowerState.OFF)             |
+   |             |               |            |              |                                                                | | `1` (PowerState.ON)                |
+   |             |               |            |              | Support for IntEnum_ and IntFlag_ is new in RF 4.1.            |                                      |
    +-------------+---------------+------------+--------------+----------------------------------------------------------------+--------------------------------------+
    | None_       |               | NoneType   | string       | String `NONE` (case-insensitively) is converted to `None`      | | `None`                             |
    |             |               |            |              | object. Other values cause an error.                           |                                      |
@@ -1516,6 +1543,9 @@ Other types cause conversion failures.
 .. _date: https://docs.python.org/library/datetime.html#datetime.date
 .. _timedelta: https://docs.python.org/library/datetime.html#datetime.timedelta
 .. _Enum: https://docs.python.org/library/enum.html#enum.Enum
+.. _Flag: https://docs.python.org/library/enum.html#enum.Flag
+.. _IntEnum: https://docs.python.org/library/enum.html#enum.IntEnum
+.. _IntFlag: https://docs.python.org/library/enum.html#enum.IntFlag
 .. _None: https://docs.python.org/library/constants.html#None
 .. _list: https://docs.python.org/library/stdtypes.html#list
 .. _Sequence: https://docs.python.org/library/collections.abc.html#collections.abc.Sequence
@@ -1535,8 +1565,8 @@ Specifying multiple possible types
 
 Starting from Robot Framework 4.0, it is possible to specify that an argument
 has multiple possible types. In this situation argument conversion is attempted
-based on each type in the order they have been specified. If any conversion
-succeeds, the resulting value is used, and otherwise the whole conversion fails.
+based on each type and the whole conversion fails if none of these conversions
+succeed.
 
 When using function annotations, the natural syntax to specify that argument
 has multiple possible types is using Union_:
@@ -1546,37 +1576,76 @@ has multiple possible types is using Union_:
   from typing import Union
 
 
-  def example(length=Union[int, float], padding=[None, int, str]):
+  def example(length: Union[int, float], padding: Union[int, str, None] = None):
       # ...
 
-An alternative is giving types a tuple. It is not recommended with annotations
+An alternative is specifying types as a tuple. It is not recommended with annotations,
 because that syntax is not supported by other tools, but it works well with
-the `@keyword` decorator:
+the `@keyword` decorator and is Python 2 compatible:
 
 .. sourcecode:: python
 
   from robot.api.deco import keyword
 
 
-  @keyword(types={'length': (int, float), 'padding': (None, int, str)})
-  def example(length, padding):
+  @keyword(types={'length': (int, float), 'padding': (int, str, None)})
+  def example(length, padding=None):
       # ...
 
 With the above examples the `length` argument would first be converted to an
 integer and if that fails then to a float. The `padding` would be first
-converted to `None`, then to an integer, and finally to a string.
+converted to an integer, then to a string, and finally to `None`.
 
-If any of the specified types is not recognized by Robot Framework and
-the given argument cannot be converted to any of the types before it,
-the given argument will be used as-is. For example, with this keyword
-conversion would first attempted to an integer but if that fails the keyword
-would get the original given argument:
+If the given argument has one of the accepted types, then no conversion is done
+and the argument is used as-is. For example, if the `length` argument gets
+value `1.5` as a float, it would not be converted to an integer. Notice that
+using non-string values like floats as an argument requires using variables as
+these examples giving different values to the `length` argument demonstrate:
+
+.. sourcecode:: robotframework
+
+   *** Test Cases ***
+   Conversion
+       Example    10        # Argument is a string. Converted to an integer.
+       Example    1.5       # Argument is a string. Converted to a float.
+       Example    ${10}     # Argument is an integer. Accepted as-is.
+       Example    ${1.5}    # Argument is a float. Accepted as-is.
+
+If one of the accepted types is string, then no conversion is done if the given
+argument is a string. As the following examples giving different values to the
+`padding` argument demonstrate, also in these cases passing other types is
+possible using variables:
+
+.. sourcecode:: robotframework
+
+   *** Test Cases ***
+   Conversion
+       Example    1    big        # Argument is a string. Accepted as-is.
+       Example    1    10         # Argument is a string. Accepted as-is.
+       Example    1    ${10}      # Argument is an integer. Accepted as-is.
+       Example    1    ${None}    # Argument is `None`. Accepted as-is.
+       Example    1    ${1.5}     # Argument is a float. Converted to an integer.
+
+If the given argument does not have any of the accepted types, conversion is
+attempted in the order types are specified. If any conversion succeeds, the
+resulting value is used without attempting remaining conversions. If no individual
+conversion succeeds, the whole conversion fails.
+
+If a specified type is not recognized by Robot Framework, then the original value
+is used as-is. For example, with this keyword conversion would first be attempted
+to an integer but if that fails the keyword would get the original given argument:
 
 .. sourcecode:: python
 
-  def example(argument=Union[int, MyCustomType]):
+  def example(argument: Union[int, MyCustomType]):
       # ...
 
+.. note:: In Robot Framework 4.0 argument conversion was done always, regardless
+          of the type of the given argument. It caused various__ problems__ and
+          was changed in Robot Framework 4.0.1.
+
+__ https://github.com/robotframework/robotframework/issues/3897
+__ https://github.com/robotframework/robotframework/issues/3908
 .. _Union: https://docs.python.org/3/library/typing.html#typing.Union
 
 Argument types with Java
@@ -2192,7 +2261,7 @@ Programmatic logging APIs
 
 Programmatic APIs provide somewhat cleaner way to log information than
 using the standard output and error streams. Currently these
-interfaces are available only to Python bases test libraries.
+interfaces are available only to Python based test libraries.
 
 Public logging API
 ''''''''''''''''''
@@ -2885,7 +2954,7 @@ __ `Getting keyword arguments`_
 Getting keyword tags
 ~~~~~~~~~~~~~~~~~~~~
 
-Starting from Robot Framework 3.0.2, dynamic libraries can report `keyword
+Dynamic libraries can report `keyword
 tags`_ by using the `get_keyword_tags` method (alias `getKeywordTags`). It
 gets a keyword name as an argument, and should return corresponding tags
 as a list of strings.
@@ -2893,8 +2962,7 @@ as a list of strings.
 Alternatively it is possible to specify tags on the last row of the
 documentation returned by the `get_keyword_documentation` method discussed
 below. This requires starting the last row with `Tags:` and listing tags
-after it like `Tags: first tag, second, third`. This approach works also
-with Robot Framework versions prior to 3.0.2.
+after it like `Tags: first tag, second, third`.
 
 .. tip:: The `get_keyword_tags` method is guaranteed to be called before
          the `get_keyword_documentation` method. This makes it easy to
@@ -3120,7 +3188,7 @@ camelCase aliases work exactly the same way.
    `run_keyword`                `name, arguments, kwargs`  `Execute the specified keyword`__ with given arguments. `kwargs` is optional.
    `get_keyword_arguments`      `name`                     Return keywords' `argument specification`__. Optional method.
    `get_keyword_types`          `name`                     Return keywords' `argument type information`__. Optional method. New in RF 3.1.
-   `get_keyword_tags`           `name`                     Return keywords' `tags`__. Optional method. New in RF 3.0.2.
+   `get_keyword_tags`           `name`                     Return keywords' `tags`__. Optional method.
    `get_keyword_documentation`  `name`                     Return keywords' and library's `documentation`__. Optional method.
    `get_keyword_source`         `name`                     Return keywords' `source`__. Optional method. New in RF 3.2.
    ===========================  =========================  =======================================================

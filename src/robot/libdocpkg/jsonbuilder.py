@@ -16,8 +16,8 @@
 import json
 import os.path
 
+from robot.running import ArgInfo, ArgumentSpec
 from robot.errors import DataError
-from robot.running.arguments import ArgumentSpec, ArgInfo
 
 from .model import LibraryDoc, KeywordDoc
 
@@ -37,6 +37,8 @@ class JsonDocBuilder(object):
                             doc_format=spec['docFormat'],
                             source=spec['source'],
                             lineno=int(spec.get('lineno', -1)))
+        libdoc.data_types.update(spec['dataTypes'].get('enums', []))
+        libdoc.data_types.update(spec['dataTypes'].get('typedDicts', []))
         libdoc.inits = [self._create_keyword(kw) for kw in spec['inits']]
         libdoc.keywords = [self._create_keyword(kw) for kw in spec['keywords']]
         return libdoc
@@ -71,7 +73,7 @@ class JsonDocBuilder(object):
         for arg in arguments:
             name = arg['name']
             setters[arg['kind']](name)
-            default = arg['default']
+            default = arg.get('defaultValue')
             if default is not None:
                 spec.defaults[name] = default
             arg_types = arg['types']

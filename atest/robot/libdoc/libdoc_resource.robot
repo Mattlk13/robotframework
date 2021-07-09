@@ -149,7 +149,7 @@ Verify Arguments Structure
         Run Keyword And Continue On Failure
         ...    Should Be Equal    ${repr}    ${exp_repr}
     END
-    Should Be True    len($arg_elems) == len($expected)
+    Should Be Equal    ${{len($arg_elems)}}    ${{len($expected)}}
 
 Get Element Optional Text
     [Arguments]    ${source}    ${xpath}
@@ -187,6 +187,11 @@ Keyword Tags Should Be
     [Arguments]    ${index}    @{expected}
     ${kws}=    Get Elements    ${LIBDOC}    xpath=keywords/kw
     ${tags}=   Get Elements Texts    ${kws}[${index}]    xpath=tags/tag
+    Should Be Equal    ${tags}    ${expected}
+
+Specfile Tags Should Be
+    [Arguments]    @{expected}
+    ${tags}    Get Elements Texts    ${LIBDOC}    xpath=tags/tag
     Should Be Equal    ${tags}    ${expected}
 
 Keyword Source Should Be
@@ -237,4 +242,39 @@ List of Dict Should Be Equal
     [Arguments]    ${list1}    ${list2}
     FOR    ${dict1}    ${dict2}    IN ZIP    ${list1}    ${list2}
         Dictionaries Should Be Equal    ${dict1}    ${dict2}
+    END
+
+DataType Enums Should Be
+    [Arguments]    ${index}    ${name}    ${doc}    @{exp_members}
+    ${enums}=   Get Elements    ${LIBDOC}   xpath=datatypes/enums/enum
+    Element Attribute Should Be    ${enums}[${index}]     name   ${name}
+    Element Text Should Be    ${enums}[${index}]     ${doc}    xpath=doc
+    ${members}=    Get Elements    ${enums}[${index}]    xpath=members/member
+    FOR   ${member}    ${exp_member}    IN ZIP    ${members}    ${exp_members}
+        ${attrs}=    Get Element Attributes    ${member}
+        Log    ${attrs}
+        Element Attribute Should Be    ${member}    name    ${{${exp_member}}}[name]
+        Element Attribute Should Be    ${member}    value    ${{${exp_member}}}[value]
+    END
+
+DataType TypedDict Should Be
+    [Arguments]    ${index}    ${name}    ${doc}    @{exp_items}
+    ${typdict}=   Get Elements    ${LIBDOC}   xpath=datatypes/typeddicts/typeddict
+    Element Attribute Should Be    ${typdict}[${index}]     name   ${name}
+    Element Text Should Be    ${typdict}[${index}]     ${doc}    xpath=doc
+    ${items}=    Get Elements    ${typdict}[${index}]    xpath=items/item
+    FOR   ${exp_item}    IN    @{exp_items}
+        ${exp}    Evaluate    json.loads($exp_item)
+        FOR    ${item}    IN    @{items}
+            ${cur}=    Get Element Attributes    ${item}
+            IF    $cur['key'] == $exp['key']
+                Should Be Equal    ${cur}[key]         ${exp}[key]
+                Should Be Equal    ${cur}[type]        ${exp}[type]
+                IF    'required' in $exp
+                    Should Be Equal    ${cur}[required]    ${exp}[required]
+                END
+                Log    ${cur} == ${exp}
+                Exit For Loop
+            END
+        END
     END

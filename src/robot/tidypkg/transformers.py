@@ -121,7 +121,7 @@ class NewlineNormalizer(ModelTransformer):
 
     def visit_Section(self, node):
         if node is not self.last_section:
-            node.body.append(EmptyLine.from_value(self.newline))
+            node.body.append(EmptyLine.from_params(self.newline))
         return self.generic_visit(node)
 
     def visit_CommentSection(self, node):
@@ -136,7 +136,7 @@ class NewlineNormalizer(ModelTransformer):
 
     def visit_TestCase(self, node):
         if not node.body or node is not self.last_test:
-            node.body.append(EmptyLine.from_value(self.newline))
+            node.body.append(EmptyLine.from_params(self.newline))
         return self.generic_visit(node)
 
     def visit_KeywordSection(self, node):
@@ -145,16 +145,22 @@ class NewlineNormalizer(ModelTransformer):
 
     def visit_Keyword(self, node):
         if not node.body or node is not self.last_keyword:
-            node.body.append(EmptyLine.from_value(self.newline))
+            node.body.append(EmptyLine.from_params(self.newline))
         return self.generic_visit(node)
 
     def visit_Statement(self, statement):
         if statement[-1].type != Token.EOL:
             if not self._should_write_content_after_name(statement):
                 statement.tokens.append(Token(Token.EOL, self.newline))
+        new_tokens = []
         for line in statement.lines:
             if line[-1].type == Token.EOL:
-                line[-1].value = self.newline
+                if self._should_write_content_after_name(statement):
+                    line.pop()
+                else:
+                    line[-1].value = self.newline
+            new_tokens.extend(line)
+        statement.tokens = new_tokens
         return statement
 
     def _should_write_content_after_name(self, statement):
@@ -191,6 +197,17 @@ class SeparatorNormalizer(ModelTransformer):
         node.body = [self.visit(item) for item in node.body]
         self.indent -= 1
         self.visit_Statement(node.end)
+        return node
+
+    def visit_If(self, node):
+        self.visit_Statement(node.header)
+        self.indent += 1
+        node.body = [self.visit(item) for item in node.body]
+        self.indent -= 1
+        if node.orelse:
+            self.visit(node.orelse)
+        if node.end:
+            self.visit_Statement(node.end)
         return node
 
     def visit_Statement(self, statement):

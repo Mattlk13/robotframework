@@ -1,23 +1,23 @@
-=====================
-Robot Framework 4.0a3
-=====================
+===========================
+Robot Framework 4.0 alpha 3
+===========================
 
 
 .. default-role:: code
 
+`Robot Framework`_ 4.0  is a new major release with lot of big new features
+such as native support for IF / ELSE, the SKIP status and enhancements,
+for example, to type conversion and Libdoc. Robot Framework alpha 3 is its
+third preview release targeted especially for developers
+of external tools that are affected by the new status and Libdoc changes, but
+also for users interested in the IF / ELSE support.
 
-`Robot Framework`_ 4.0a3 is a new release with **UPDATE** enhancements
-and bug fixes. **MORE intro stuff...**
-
-**REMOVE reference to tracker if release notes contain all issues.**
-All issues targeted for Robot Framework v4.0 can be found
+All issues targeted for Robot Framework 4.0 can be found
 from the `issue tracker milestone`_.
 
 Questions and comments related to the release can be sent to the
 `robotframework-users`_ mailing list or to `Robot Framework Slack`_,
 and possible bugs submitted to the `issue tracker`_.
-
-**REMOVE ``--pre`` from the next command with final releases.**
 If you have pip_ installed, just run
 
 ::
@@ -34,7 +34,7 @@ to install exactly this version. Alternatively you can download the source
 distribution from PyPI_ and install it manually. For more details and other
 installation approaches, see the `installation instructions`_.
 
-Robot Framework 4.0a3 was released on Friday November 13, 2020.
+Robot Framework 4.0 alpha 3 was released on Friday November 13, 2020.
 
 .. _Robot Framework: http://robotframework.org
 .. _Robot Framework Foundation: http://robotframework.org/foundation

@@ -5,14 +5,19 @@ Library            skiplib.py
 ${TEST_OR_TASK}    Test
 
 *** Test Cases ***
-Skip Keyword
+Skip keyword
     [Documentation]    SKIP Skipped with Skip keyword.
     Skip
     Fail    Should not be executed!
 
-Skip with Library Keyword
+Skip with SkipExecution exception in library
     [Documentation]    SKIP Show must not got on
     Skip with Message    Show must not got on
+    Fail    Should not be executed!
+
+Skip with SkipExecution exception in library using HTML
+    [Documentation]    SKIP *HTML* Show <b>must</b> not got on
+    Skip with Message    Show <b>must</b> not got on    html=True
     Fail    Should not be executed!
 
 Skip with custom exception
@@ -201,11 +206,20 @@ Skipped with --SkipOnFailure when Failure in Test Teardown
     ...    ${TEST_OR_TASK} failed but its tags matched '--SkipOnFailure' and it was marked skipped.
     ...
     ...    Original failure:
-    ...    Setup failed:
+    ...    Teardown failed:
     ...    failure in teardown
     [Tags]    skip-on-failure
     [Teardown]    Fail    failure in teardown
     No Operation
+
+Skipped with --SkipOnFailure when Set Tags Used in Teardown
+    [Documentation]    SKIP
+    ...    ${TEST_OR_TASK} failed but its tags matched '--SkipOnFailure' and it was marked skipped.
+    ...
+    ...    Original failure:
+    ...    Ooops, we fail!
+    Fail    Ooops, we fail!
+    [Teardown]    Set Tags    skip-on-failure
 
 --NonCritical Is an Alias for --SkipOnFailure
     [Documentation]    SKIP
@@ -214,11 +228,6 @@ Skipped with --SkipOnFailure when Failure in Test Teardown
     ...    Original failure:
     ...    AssertionError
     [Tags]    non-crit
-    Fail
-
---Critical can be used to override --SkipOnFailure
-    [Documentation]    FAIL AssertionError
-    [Tags]    dynamic-skip    crit
     Fail
 
 Failing Test

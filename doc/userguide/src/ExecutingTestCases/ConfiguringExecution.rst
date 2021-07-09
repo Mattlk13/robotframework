@@ -189,8 +189,6 @@ selected individually with the :option:`--suite` option. It is possible to furth
 fine-tune the list of selected tests by using :option:`--test`, :option:`--suite`,
 :option:`--include` and :option:`--exclude` options.
 
-.. note:: :option:`--rerunfailedsuites` option was added in Robot Framework 3.0.1.
-
 When no tests match selection
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -237,9 +235,22 @@ Setting the documentation
 
 In addition to `defining documentation in the test data`__, documentation
 of the top-level suite can be given from the command line with the
-option :option:`--doc (-D)` The value can contain simple `HTML formatting`_.
+option :option:`--doc (-D)`. The value can contain simple `HTML formatting`_
+and must be quoted if it contains spaces.
 
-.. note:: Prior to Robot Framework 3.1, underscores in the value were
+If the given documentation is a relative or absolute path pointing to an existing
+file, the actual documentation will be read from that file. This is especially
+convenient if the externally specified documentation is long or contains multiple
+lines.
+
+Examples::
+
+    robot --doc "Example documentation" tests.robot
+    robot --doc doc.txt tests.robot    # Documentation read from doc.txt if it exits.
+
+.. note:: Reading documentation from an external file is new in Robot Framework 4.1.
+
+          Prior to Robot Framework 3.1, underscores in documentation were
           converted to spaces same way as with the :option:`--name` option.
 
 __ `Test suite name and documentation`_
@@ -250,10 +261,26 @@ Setting free metadata
 `Free test suite metadata`_ may also be given from the command line with the
 option :option:`--metadata (-M)`. The argument must be in the format
 `name:value`, where `name` the name of the metadata to set and
-`value` is its value. The value can contain simple `HTML formatting`_.
+`value` is its value. The value can contain simple `HTML formatting`_ and
+the whole argument must be quoted if it contains spaces.
 This option may be used several times to set multiple metadata values.
 
-.. note:: Prior to Robot Framework 3.1, underscores in the value were
+If the given value is a relative or absolute path pointing to an existing
+file, the actual value will be read from that file. This is especially
+convenient if the value is long or contains multiple lines.
+If the value should be a path to an existing file, not read from that file,
+the value must be separated with a space from the `name:` part.
+
+Examples::
+
+    robot --metadata Name:Value tests.robot
+    robot --metadata "Another Name:Another value, now with spaces" tests.robot
+    robot --metadata "Read From File:meta.txt" tests.robot    # Value read from meta.txt if it exists.
+    robot --metadata "Path As Value: meta.txt" tests.robot    # Value always used as-is.
+
+.. note:: Reading metadata value from an external file is new in Robot Framework 4.1.
+
+          Prior to Robot Framework 3.1, underscores in the value were
           converted to spaces same way as with the :option:`--name` option.
 
 Setting tags
@@ -403,8 +430,7 @@ resolved.
 It is possible to disable dry run validation of specific `user keywords`_
 by adding a special `robot:no-dry-run` `keyword tag`__ to them. This is useful
 if a keyword fails in the dry run mode for some reason, but work fine when
-executed normally. Disabling the dry run mode is a new feature in Robot
-Framework 3.0.2.
+executed normally.
 
 .. note:: The dry run mode does not validate variables.
 
@@ -477,8 +503,11 @@ works exactly like when `importing a test library`__.
 
 If a modifier requires arguments, like the examples below do, they can be
 specified after the modifier name or path using either a colon (`:`) or a
-semicolon (`;`) as a separator. If both are used in the value, the one first
-is considered to be the actual separator.
+semicolon (`;`) as a separator. If both are used in the value, the one used
+first is considered to be the actual separator. Starting from Robot Framework
+4.0, arguments also support the `named argument syntax`_ as well as `argument
+conversion`__ based on `type hints`__ and `default values`__ the same way
+as keywords do.
 
 If more than one pre-run modifier is needed, they can be specified by using
 the :option:`--prerunmodifier` option multiple times. If similar modifying
@@ -491,15 +520,22 @@ executed test suite and test cases. Most importantly, options related to
 use options like :option:`--include` also with possible dynamically added
 tests.
 
+.. tip:: Modifiers are taken into use from the command line exactly the same
+         way as listeners_. See the `Taking listeners into use`_ section for
+         more information and examples.
+
 .. note:: Prior to Robot Framework 3.2 pre-run modifiers were executed
           after other configuration.
 
 __ `Specifying library to import`_
+__ `Supported conversions`_
+__ `Specifying argument types using function annotations`_
+__ `Implicit argument types based on default values`_
 
 Example: Select every Xth test
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The first example shows how a pre-run-modifier can remove tests from the
+The first example shows how a pre-run modifier can remove tests from the
 executed test suite structure. In this example only every Xth tests is
 preserved, and the X is given from the command line along with an optional
 start index.
@@ -516,6 +552,9 @@ the file is in the `module search path`_, it could be used like this::
 
     # Specify the modifier as a name. Run every third test, starting from the second.
     robot --prerunmodifier SelectEveryXthTest:3:1 tests.robot
+
+.. note:: Argument conversion based on type hints like `x: int` in the above
+          example is new in Robot Framework 4.0 and requires Python 3.
 
 Example: Exclude tests by name
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -537,8 +576,8 @@ could be used like this::
   # Exclude all tests ending with 'something'.
   robot --prerunmodifier path/to/ExcludeTests.py:*something tests.robot
 
-Example: Skip setups and teardowns
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Example: Disable setups and teardowns
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Sometimes when debugging tests it can be useful to disable setups or teardowns.
 This can be accomplished by editing the test data, but pre-run modifiers make
@@ -557,6 +596,10 @@ disabled, for example, as follows::
 
   # Disable both test setups and teardowns by using '--prerunmodifier' twice.
   robot --prerunmodifier disable.TestSetup --prerunmodifier disable.TestTeardown tests.robot
+
+.. note::  Prior to Robot Framework 4.0 `setup` and `teardown` were accessed via
+           the intermediate `keywords` attribute and, for example, suite setup
+           was disabled like `suite.keywords.setup = None`.
 
 Controlling console output
 --------------------------

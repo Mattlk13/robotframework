@@ -24,12 +24,12 @@ from robot.result.keywordremover import KeywordRemover
 from robot.result.flattenkeywordmatcher import validate_flatten_keyword
 from robot.utils import (abspath, create_destination_directory, escape,
                          format_time, get_link_path, html_escape, is_list_like,
-                         py2to3, split_args_from_name_or_path)
+                         py3to2, split_args_from_name_or_path)
 
 from .gatherfailed import gather_failed_tests, gather_failed_suites
 
 
-@py2to3
+@py3to2
 class _BaseSettings(object):
     _cli_opts = {'RPA'              : ('rpa', None),
                  'Name'             : ('name', None),
@@ -43,8 +43,8 @@ class _BaseSettings(object):
                  'SetTag'           : ('settag', []),
                  'Include'          : ('include', []),
                  'Exclude'          : ('exclude', []),
-                 'Critical'         : ('critical', None),
-                 'NonCritical'      : ('noncritical', None),
+                 'Critical'         : ('critical', []),
+                 'NonCritical'      : ('noncritical', []),
                  'OutputDir'        : ('outputdir', abspath('.')),
                  'Log'              : ('log', 'log.html'),
                  'Report'           : ('report', 'report.html'),
@@ -104,11 +104,11 @@ class _BaseSettings(object):
         if value == self._get_default_value(name):
             return value
         if name == 'Doc':
-            return self._escape_as_data(value)
-        if name in ['Metadata', 'TagDoc']:
-            if name == 'Metadata':
-                value = [self._escape_as_data(v) for v in value]
-            return [self._process_metadata_or_tagdoc(v) for v in value]
+            return self._process_doc(value)
+        if name == 'Metadata':
+            return [self._process_metadata(v) for v in value]
+        if name == 'TagDoc':
+            return [self._process_tagdoc(v) for v in value]
         if name in ['Include', 'Exclude']:
             return [self._format_tag_patterns(v) for v in value]
         if name in self._output_opts and (not value or value.upper() == 'NONE'):
@@ -139,7 +139,17 @@ class _BaseSettings(object):
             return tuple(ext.lower().lstrip('.') for ext in value.split(':'))
         return value
 
-    def _escape_as_data(self, value):
+    def _process_doc(self, value):
+        if os.path.exists(value) and value.strip() == value:
+            try:
+                with open(value) as f:
+                    value = f.read()
+            except (OSError, IOError) as err:
+                raise DataError('Reading documentation from an external file failed: %s'
+                                % err)
+        return self._escape_doc(value).strip()
+
+    def _escape_doc(self, value):
         return value
 
     def _process_log_level(self, level):
@@ -235,10 +245,17 @@ class _BaseSettings(object):
             return '.txt'
         raise FrameworkError("Invalid output file type: %s" % type_)
 
-    def _process_metadata_or_tagdoc(self, value):
+    def _process_metadata(self, value):
+        name, value = self._split_from_colon(value)
+        return name, self._process_doc(value)
+
+    def _split_from_colon(self, value):
         if ':' in value:
             return value.split(':', 1)
         return value, ''
+
+    def _process_tagdoc(self, value):
+        return self._split_from_colon(value)
 
     def _process_report_background(self, colors):
         if colors.count(':') not in [1, 2]:
@@ -310,7 +327,7 @@ class _BaseSettings(object):
     def __contains__(self, setting):
         return setting in self._cli_opts
 
-    def __unicode__(self):
+    def __str__(self):
         return '\n'.join('%s: %s' % (name, self._opts[name])
                          for name in sorted(self._opts))
 
@@ -394,8 +411,8 @@ class RobotSettings(_BaseSettings):
                        'DryRun'             : ('dryrun', False),
                        'ExitOnFailure'      : ('exitonfailure', False),
                        'ExitOnError'        : ('exitonerror', False),
-                       'Skip'               : ('skip', None),
-                       'SkipOnFailure'      : ('skiponfailure', None),
+                       'Skip'               : ('skip', []),
+                       'SkipOnFailure'      : ('skiponfailure', []),
                        'SkipTeardownOnExit' : ('skipteardownonexit', False),
                        'Randomize'          : ('randomize', 'NONE'),
                        'RunEmptySuite'      : ('runemptysuite', False),
@@ -429,7 +446,7 @@ class RobotSettings(_BaseSettings):
     def _output_disabled(self):
         return self.output is None
 
-    def _escape_as_data(self, value):
+    def _escape_doc(self, value):
         return escape(value)
 
     @property

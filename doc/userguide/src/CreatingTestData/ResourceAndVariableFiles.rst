@@ -12,7 +12,7 @@ as well. The main difference is that resource files cannot have tests.
 variables. For example, they allow values other than strings and
 enable creating variables dynamically. Their flexibility comes from
 the fact that they are created using Python code, which also makes
-them somewhat more complicated than `Variable tables`_.
+them somewhat more complicated than `Variable sections`_.
 
 .. contents::
    :depth: 2
@@ -62,10 +62,10 @@ Resource file structure
 
 The higher-level structure of resource files is the same as that of
 test case files otherwise, but, of course, they cannot contain Test
-Case tables. Additionally, the Setting table in resource files can
+Case sections. Additionally, the Setting section in resource files can
 contain only import settings (:setting:`Library`, :setting:`Resource`,
-:setting:`Variables`) and :setting:`Documentation`. The Variable table and
-Keyword table are used exactly the same way as in test case files.
+:setting:`Variables`) and :setting:`Documentation`. The Variable section and
+Keyword section are used exactly the same way as in test case files.
 
 If several resource files have a user keyword with the same name, they
 must be used so that the `keyword name is prefixed with the resource
@@ -81,7 +81,7 @@ Documenting resource files
 
 Keywords created in a resource file can be documented__ using
 :setting:`[Documentation]` setting. The resource file itself can have
-:setting:`Documentation` in the Setting table similarly as
+:setting:`Documentation` in the Setting section similarly as
 `test suites`__.
 
 Both Libdoc_ and RIDE_ use these documentations, and they
@@ -127,7 +127,7 @@ Variable files
 --------------
 
 Variable files contain variables_ that can be used in the test
-data. Variables can also be created using variable tables or set from
+data. Variables can also be created using Variable sections or set from
 the command line, but variable files allow creating them dynamically
 and also make it easy to create other variable values than strings.
 
@@ -157,11 +157,11 @@ __ `Variable file as YAML`_
 Taking variable files into use
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Setting table
-'''''''''''''
+Setting section
+'''''''''''''''
 
 All test data files can import variables using the
-:setting:`Variables` setting in the Setting table, in the same way as
+:setting:`Variables` setting in the Setting section, in the same way as
 `resource files are imported`__ using the :setting:`Resource`
 setting. Similarly to resource files, the path to the imported
 variable file is considered relative to the directory where the
@@ -185,7 +185,7 @@ __ `Getting variables from a special function`_
 All variables from a variable file are available in the test data file
 that imports it. If several variable files are imported and they
 contain a variable with the same name, the one in the earliest imported file is
-taken into use. Additionally, variables created in Variable tables and
+taken into use. Additionally, variables created in Variable sections and
 set from the command line override variables from variable files.
 
 Command line
@@ -202,7 +202,7 @@ and possible arguments are joined to the path with a colon (`:`)::
 
 Variable files taken into use from the
 command line are also searched from the `module search path`_ similarly as
-variable files imported in the Setting table.
+variable files imported in the Setting section.
 
 If a variable file is given as an absolute Windows path, the colon after the
 drive letter is not considered a separator::
@@ -271,13 +271,13 @@ These prefixes will not be part of the final variable name, but they cause
 Robot Framework to validate that the value actually is list-like or
 dictionary-like. With dictionaries the actual stored value is also turned
 into a special dictionary that is used also when `creating dictionary
-variables`_ in the Variable table. Values of these dictionaries are accessible
+variables`_ in the Variable section. Values of these dictionaries are accessible
 as attributes like `${FINNISH.cat}`. These dictionaries are also ordered, but
 preserving the source order requires also the original dictionary to be
 ordered.
 
 The variables in both the examples above could be created also using the
-Variable table below.
+Variable section below.
 
 .. sourcecode:: robotframework
 
@@ -301,7 +301,7 @@ Using objects as values
 '''''''''''''''''''''''
 
 Variables in variable files are not limited to having only strings or
-other base types as values like variable tables. Instead, their
+other base types as values like Variable sections. Instead, their
 variables can contain any objects. In the example below, the variable
 `${MAPPING}` contains a Java Hashtable with two values (this
 example works only when running tests on Jython).
@@ -581,12 +581,12 @@ The following example demonstrates a simple YAML file:
           Robot Framework 3.2.
 
 YAML variable files can be used exactly like normal variable files
-from the command line using :option:`--variablefile` option, in the settings
-table using :setting:`Variables` setting, and dynamically using the
+from the command line using :option:`--variablefile` option, in the Settings
+section using :setting:`Variables` setting, and dynamically using the
 :name:`Import Variables` keyword.
 
-If the above YAML file is imported, it will create exactly the same
-variables as the following variable table:
+If the above YAML file is imported, it will create exactly the same variables
+as this Variable section:
 
 .. sourcecode:: robotframework
 
@@ -603,7 +603,7 @@ types supported by YAML syntax. If names or values contain non-ASCII
 characters, YAML variables files must be UTF-8 encoded.
 
 Mappings used as values are automatically converted to special dictionaries
-that are used also when `creating dictionary variables`_ in the variable table.
+that are used also when `creating dictionary variables`_ in the Variable section.
 Most importantly, values of these dictionaries are accessible as attributes
 like `${DICT.one}`, assuming their names are valid as Python attribute names.
 If the name contains spaces or is otherwise not a valid attribute name, it is

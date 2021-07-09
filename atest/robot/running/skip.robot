@@ -1,12 +1,15 @@
 *** Settings ***
-Suite Setup     Run Tests  --skip skip-this --SkipOnFailure skip-on-failure --noncritical non-crit --critical crit   running/skip/
+Suite Setup     Run Tests  --skip skip-this --SkipOnFailure skip-on-failure --noncritical non-crit    running/skip/
 Resource        atest_resource.robot
 
 *** Test Cases ***
-Skip Keyword
+Skip keyword
     Check Test Case    ${TEST NAME}
 
-Skip with Library Keyword
+Skip with SkipExecution exception in library
+    Check Test Case    ${TEST NAME}
+
+Skip with SkipExecution exception in library using HTML
     Check Test Case    ${TEST NAME}
 
 Skip with custom exception
@@ -73,6 +76,12 @@ Skip in Directory Suite Setup
 Skip In Suite Teardown
     Check Test Case    ${TEST NAME}
 
+Skip In Suite Setup And Teardown
+    Check Test Case    ${TEST NAME}
+
+Skip In Suite Teardown After Fail In Setup
+    Check Test Case    ${TEST NAME}
+
 Skip In Directory Suite Teardown
     Check Test Case    ${TEST NAME}
 
@@ -100,6 +109,9 @@ Skipped with --SkipOnFailure when Failure in Test Setup
 Skipped with --SkipOnFailure when Failure in Test Teardown
     Check Test Case    ${TEST NAME}
 
+Skipped with --SkipOnFailure when Set Tags Used in Teardown
+    Check Test Case    Skipped with --SkipOnFailure when Set Tags Used in Teardown
+
 Using Skip Does Not Affect Passing And Failing Tests
     Check Test Case    Passing Test
     Check Test Case    Failing Test
@@ -107,5 +119,20 @@ Using Skip Does Not Affect Passing And Failing Tests
 --NonCritical Is an Alias for --SkipOnFailure
     Check Test Case    ${TEST NAME}
 
---Critical can be used to override --SkipOnFailure
-    Check Test Case    ${TEST NAME}
+--Critical Is a Negative Alias for --SkipOnFailure
+    Run Tests    --critical pass    misc/pass_and_fail.robot
+    ${message} =    Catenate    SEPARATOR=\n
+    ...    Test failed but its tags matched '--SkipOnFailure' and it was marked skipped.
+    ...
+    ...    Original failure:
+    ...    Expected failure
+    Check Test Case    Fail    SKIP    ${message}
+
+--Critical and --NonCritical together
+    Run Tests    --critical force --noncritical fail    misc/pass_and_fail.robot
+    ${message} =    Catenate    SEPARATOR=\n
+    ...    Test failed but its tags matched '--SkipOnFailure' and it was marked skipped.
+    ...
+    ...    Original failure:
+    ...    Expected failure
+    Check Test Case    Fail    SKIP    ${message}
